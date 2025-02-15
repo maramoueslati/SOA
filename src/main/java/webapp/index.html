@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Logements - Interface Moderne</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/2.3.0/alpine.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        .fade-enter {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .fade-enter-active {
+            opacity: 1;
+            transform: translateY(0);
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+<div x-data="logementApp()" class="min-h-screen p-6">
+    <!-- Header -->
+    <header class="max-w-6xl mx-auto mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">Gestion des Logements</h1>
+        <p class="text-gray-600">Système de gestion immobilière</p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-6xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Form Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-4" x-text="editMode ? 'Modifier le Logement' : 'Ajouter un Logement'"></h2>
+                <form @submit.prevent="submitForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Référence</label>
+                        <input type="number" x-model="formData.reference" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Adresse</label>
+                        <input type="text" x-model="formData.adresse" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Délégation</label>
+                        <input type="text" x-model="formData.delegation" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Gouvernorat</label>
+                        <input type="text" x-model="formData.gouvernorat" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Type</label>
+                        <select x-model="formData.type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" required>
+                            <option value="">Sélectionnez un type</option>
+                            <option value="Appartement">Appartement</option>
+                            <option value="Maison">Maison</option>
+                            <option value="Villa">Villa</option>
+                            <option value="Studio">Studio</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Description</label>
+                        <textarea x-model="formData.description" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" rows="3" required></textarea>
+                    </div>
+                    <div class="flex gap-4">
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                            <span x-text="editMode ? 'Mettre à jour' : 'Ajouter'"></span>
+                        </button>
+                        <button type="button" @click="resetForm" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">
+                            Annuler
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- List Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold">Liste des Logements</h2>
+                    <div class="relative">
+                        <input type="text" x-model="searchTerm" placeholder="Rechercher..."
+                               class="pl-8 pr-4 py-2 border rounded-md">
+                        <svg class="w-4 h-4 absolute left-2.5 top-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="overflow-y-auto max-h-[600px]">
+                    <template x-for="logement in filteredLogements" :key="logement.reference">
+                        <div class="border-b p-4 hover:bg-gray-50 transition-colors">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-medium" x-text="logement.type + ' - Ref: ' + logement.reference"></h3>
+                                    <p class="text-sm text-gray-600" x-text="logement.adresse"></p>
+                                    <p class="text-sm text-gray-500" x-text="logement.delegation + ', ' + logement.gouvernorat"></p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button @click="editLogement(logement)" class="text-blue-600 hover:text-blue-800">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                                        </svg>
+                                    </button>
+                                    <button @click="deleteLogement(logement.reference)" class="text-red-600 hover:text-red-800">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    function logementApp() {
+        return {
+            logements: [],
+            formData: {
+                reference: '',
+                adresse: '',
+                delegation: '',
+                gouvernorat: '',
+                type: '',
+                description: ''
+            },
+            editMode: false,
+            searchTerm: '',
+
+            init() {
+                this.loadLogements();
+            },
+
+            get filteredLogements() {
+                if (!this.searchTerm) return this.logements;
+                const searchLower = this.searchTerm.toLowerCase();
+                return this.logements.filter(logement =>
+                    logement.adresse.toLowerCase().includes(searchLower) ||
+                    logement.type.toLowerCase().includes(searchLower) ||
+                    logement.reference.toString().includes(searchLower)
+                );
+            },
+
+            async loadLogements() {
+                try {
+                    const response = await fetch('http://localhost:8090/LogementRendezVous_Etudiant_war_exploded/api/logements/');
+                    if (response.ok) {
+                        this.logements = await response.json();
+                    }
+                } catch (error) {
+                    console.error('Erreur lors du chargement des logements:', error);
+                    alert('Erreur lors du chargement des logements');
+                }
+            },
+
+            async submitForm() {
+                try {
+                    const url = this.editMode
+                        ? `hhttp://localhost:8090/LogementRendezVous_Etudiant_war_exploded/api/logements/${this.formData.reference}`
+                        : 'http://localhost:8090/LogementRendezVous_Etudiant_war_exploded/api/logements/';
+
+                    const response = await fetch(url, {
+                        method: this.editMode ? 'PUT' : 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(this.formData)
+                    });
+
+                    if (response.ok) {
+                        await this.loadLogements();
+                        this.resetForm();
+                    } else {
+                        throw new Error('Erreur lors de la soumission');
+                    }
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    alert('Erreur lors de la soumission du formulaire');
+                }
+            },
+
+            async deleteLogement(reference) {
+                if (confirm('Êtes-vous sûr de vouloir supprimer ce logement ?')) {
+                    try {
+                        const response = await fetch(`http://localhost:8090/LogementRendezVous_Etudiant_war_exploded/api/logements/${reference}`, {
+                            method: 'DELETE'
+                        });
+
+                        if (response.ok) {
+                            await this.loadLogements();
+                        } else {
+                            throw new Error('Erreur lors de la suppression');
+                        }
+                    } catch (error) {
+                        console.error('Erreur:', error);
+                        alert('Erreur lors de la suppression du logement');
+                    }
+                }
+            },
+
+            editLogement(logement) {
+                this.formData = { ...logement };
+                this.editMode = true;
+            },
+
+            resetForm() {
+                this.formData = {
+                    reference: '',
+                    adresse: '',
+                    delegation: '',
+                    gouvernorat: '',
+                    type: '',
+                    description: ''
+                };
+                this.editMode = false;
+            }
+        }
+    }
+</script>
+</body>
+</html>
